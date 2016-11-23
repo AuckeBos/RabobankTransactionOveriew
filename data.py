@@ -141,11 +141,19 @@ class Data(object):
             else:
                 print 'no excludes added'
                 data['exclude'] = []
+
+            if str(raw_input('Have you got Libre Office Calc isntalled? (y/n): ')) == 'y':
+                print 'Libre office is installed on this system'
+                data['installed'] = True
+            else:
+                print 'Libre office is not installed on this system'
+                data['installed'] = False
+
             json.dump(data, file)
             file.close()
             print('Config file created')
         data = json.load(open('config.json', 'r'))
-        return data['AuthId'], data['AuthBpasNr'], data['exclude']
+        return data['AuthId'], data['AuthBpasNr'], data['exclude'], data['installed']
 
 
     def getExcludedAccounts(self):
@@ -165,7 +173,7 @@ class Data(object):
 
     def getData(self, date):
 
-        AuthId, AuthBpasNr, exclude = self.getCredits()
+        AuthId, AuthBpasNr, exclude, installed = self.getCredits()
 
         img = self.getImage(self.getScid(), AuthId, AuthBpasNr)
         img.show()
@@ -181,4 +189,4 @@ class Data(object):
         self.getTransactions(soup, index, start, end)
 
         self.session.close()
-        return self.dataArray, exclude
+        return self.dataArray, exclude, installed

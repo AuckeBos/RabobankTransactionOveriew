@@ -8,7 +8,7 @@ import openpyxl as openpyxl
 from subprocess import call
 import sys
 from data import Data
-import os.path
+import os
 import re
 
 def getMonth(month):
@@ -79,5 +79,7 @@ fileName = 'Kostenoverzicht.xlsx'
 file = openpyxl.load_workbook(fileName)
 
 createSheet()
-data, exclude = Data().getData(month)
+data, exclude, installed = Data().getData(month)
 fillSheet(data, exclude)
+if installed:
+    os.system('libreoffice --calc {}'.format(fileName))
