@@ -8,55 +8,54 @@ import openpyxl as openpyxl
 from subprocess import call
 import sys
 from data import Data
-import os
-import re
+import os.path
+from datetime import date
 
 def getMonth(month):
-    months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
-              'november', 'december']
+    months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+    codes = ['{year:02d}-{month:02d}-01'.format(year=date.today().year, month=i) for i in range(1, 13)]
     if month in months:
-        year = str(raw_input('Choose year (yyyy): '))
-        while not bool(re.compile('^[0-9]{4}$').match(year)):
-            year = str(raw_input('Invalid year, choose again (yyyy): '))
-        codes = []
-        for i in range (1, 13):
-            codes.append('{}-{}-01'.format(year, str(i).zfill(2)))
         return codes[months.index(month)]
-    print 'Month not found! please choose from {}'.format(months.lower())
-    return getMonth(str(raw_input('Choose month: ')))
+    print "Month not found! please choose from {}".format(months.lower())
+    return getMonth(str(raw_input("Choose month: ")))
 
 def createSheet():
-    if not 'Template' in file.sheetnames:
-        sys.exit('Template sheet not found! please create it')
-    template = file.get_sheet_by_name('Template')
+    if not "Template" in file.sheetnames:
+        sys.exit("Template sheet not found! please create it")
+    template = file.get_sheet_by_name("Template")
     newSheet = file.copy_worksheet(template)
     newSheet.title = sheetName
     file.save(fileName)
-    print 'Sheet {} added to \'Kostenoverzicht.xlsx\''.format(sheetName)
+    print 'Sheet {} added to \'Kosten - inkomsten 2018.xlsx\''.format(sheetName)
 
 def fillSheet(allData, exclude):
-    added = 0
     sheet = file.get_sheet_by_name(sheetName)
     positiveTransactions = []
     negativeTransactions = []
+    boodschappenAH = []
+    pinnen = []
     for row in allData:
         transaction = {}
-        date = row.find('span', {'class':'name', 'id':'valueDate'})
-        acountNumber = row.find('span', {'class':'accountnumber'})
-        description = row.find('div', {'class':'description'})
-        name = row.find('span', {'class':'name'})
-        amount = row.find('td', {'class':'amount '})
+        date = row.find("span", {"class":"name", "id":"valueDate"})
+        acountNumber = row.find("span", {"class":"accountnumber"})
+        description = row.find("div", {"class":"description"})
+        name = row.find("span", {"class":"name"})
+        amount = row.find("td", {"class":"amount "})
 
         if date != None and acountNumber != None and not acountNumber.text in exclude:
-            added+=1
-            transaction['name'] = '' if name == None else str(name.text)
-            transaction['date'] = str(date.text)
-            transaction['description'] = str(description.text)[:30]
-            transaction['amount'] = float(str(amount.text).replace('.', '').replace(',', '.').replace('-', ''))
-            if '-' in str(amount.text):
+            transaction["name"] = "" if name == None else str(name.text)
+            transaction["date"] = str(date.text)
+            transaction["description"] = str(description.text)[:30]
+            transaction["amount"] = float(str(amount.text).replace(".", "").replace(",", ".").replace("-", ""))
+            if "-" in str(amount.text):
                 negativeTransactions.append(transaction)
             else:
                 positiveTransactions.append(transaction)
+            if "ALBERT" in str(transaction["name"]):
+                boodschappenAH.append(transaction)
+            elif "Geldautomaat" in str(description.text):
+                pinnen.append(transaction)
+
     for i in range (len(negativeTransactions)):
         sheet.cell(row = i+3, column = 1).value = negativeTransactions[i]['date']
         sheet.cell(row = i+3, column = 2).value = negativeTransactions[i]['amount']
@@ -67,19 +66,21 @@ def fillSheet(allData, exclude):
         sheet.cell(row = i+3, column = 7).value = positiveTransactions[i]['amount']
         sheet.cell(row = i+3, column = 8).value = positiveTransactions[i]['description']
         sheet.cell(row = i+3, column=9).value = positiveTransactions[i]['name']
+    for i in range (len(boodschappenAH)):
+        sheet.cell(row = i+14, column = 11).value = boodschappenAH[i]['amount']
+    for i in range (len(pinnen)):
+        sheet.cell(row = i+14, column = 12).value = pinnen[i]['amount']
     file.save(fileName)
-    print '{} transactions added to {} in \'Kostenoverzicht.xlsx\''.format(added, sheetName)
+    print '{} transactions added to {} in \'Kosten - inkomsten 2017.xlsx\''.format(len(allData), sheetName)
 
-if not os.path.exists('Kostenoverzicht.xlsx'):
-    sys.exit('File Kostenoverzicht.xlsx not found!')
+if not os.path.exists('Kosten - inkomsten 2018.xlsx'):
+    sys.exit("File Kosten - inkomsten 2018.xlsx not found!")
 
-sheetName = str(raw_input('Choose month: '))
+sheetName = str(raw_input("Choose month: "))
 month = getMonth(sheetName.lower())
-fileName = 'Kostenoverzicht.xlsx'
+fileName = "Kosten - inkomsten 2018.xlsx"
 file = openpyxl.load_workbook(fileName)
 
 createSheet()
-data, exclude, installed = Data().getData(month)
+data, exclude = Data().getData(month)
 fillSheet(data, exclude)
-if installed:
-    os.system('libreoffice --calc {}'.format(fileName))
